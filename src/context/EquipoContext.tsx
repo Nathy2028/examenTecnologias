@@ -8,12 +8,18 @@ import type { MiembroEquipo, PokemonDetalle, Rol, UsuarioActual } from '../types
 const CLAVE_CACHE = '@equipo_cache'
 
 async function guardarCache(lista: MiembroEquipo[]): Promise<void> {
-  await AsyncStorage.setItem(CLAVE_CACHE, String(lista))
+  await AsyncStorage.setItem(CLAVE_CACHE, JSON.stringify(lista))
 }
 
 async function leerCache(): Promise<MiembroEquipo[]> {
   const crudo = await AsyncStorage.getItem(CLAVE_CACHE)
-  return crudo ? JSON.parse(crudo) : []
+  try {
+    return crudo ? JSON.parse(crudo) : []
+  } catch {
+    // Copia dañada (p. ej. "[object Object]" de versiones anteriores): se descarta y el equipo se recarga desde Firestore.
+    await AsyncStorage.removeItem(CLAVE_CACHE)
+    return []
+  }
 }
 
 interface ValorContexto {
@@ -101,8 +107,9 @@ export function EquipoProvider({ children }: { children: ReactNode }) {
     const miembro = equipo.find((m) => m.id === id)
     if (!miembro) return
     await actualizarRol(uidActual(), id, rol)
-    miembro.rol = rol
-    setEquipo(equipo)
+    const lista = equipo.map((m) => (m.id === id ? { ...m, rol } : m))
+    setEquipo(lista)
+    await guardarCache(lista)
   }
 
   async function sembrar(): Promise<void> {

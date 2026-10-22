@@ -4,6 +4,7 @@ const BASE = 'https://pokeapi.co/api/v2'
 
 export async function obtenerLista(limite = 30): Promise<PokemonResumen[]> {
   const res = await fetch(`${BASE}/pokemon?limit=${limite}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const datos = await res.json()
   return datos.results.map((r: { name: string }, i: number) => ({ id: i + 1, nombre: r.name }))
 }
